@@ -1,0 +1,8 @@
+
+// WiFi Network credentials
+#define SSID "********"
+#define PASS "********"
+
+// HTTP server with /rom0.bin and /rom1.bin
+#define UPDATE_HOST     {192, 168, 42, 42}
+#define UPDATE_PORT     8000
