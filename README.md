@@ -7,7 +7,8 @@ Richard Antony Burton.
 
 # How to
 
- * Build `rboot`, upload it to 0x00000
+ * Build `rboot` or use the one in `bin/rboot.bin`, upload it to 0x00000
+   with `make flash_rboot`
  * Edit the top of `Makefile`, set the location of the Arduino custom
    hardware folder, change other settings as needed
  * Copy `config.h.sample` to `config.h`, edit for your network
