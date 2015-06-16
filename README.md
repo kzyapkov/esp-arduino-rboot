@@ -13,4 +13,10 @@ Richard Antony Burton.
    hardware folder, change other settings as needed
  * Copy `config.h.sample` to `config.h`, edit for your network
  * Run `make`, `make flash`
+ * Start a webserver for the firmware files:
+```
+cd firmware
+python -m http.server # or
+python2 -m SimpleHTTPServer
+```
  * Trigger an update by bringing BUTTON_PIN low.
