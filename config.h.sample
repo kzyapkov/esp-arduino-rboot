@@ -1,4 +1,7 @@
 
+// trigger update via this gpio, "flash" button by default
+//#define BUTTON_PIN      0
+
 // WiFi Network credentials
 #define SSID "********"
 #define PASS "********"

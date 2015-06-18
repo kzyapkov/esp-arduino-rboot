@@ -63,7 +63,7 @@ OBJ_FILES = $(addprefix $(BUILD_DIR)/,$(notdir $(LIB_SRC:.c=.c.o) $(LIB_CXXSRC:.
 
 DEFINES = -D__ets__ -DICACHE_FLASH -U__STRICT_ANSI__ \
 	-DF_CPU=$(F_CPU) -DARDUINO=$(ARDUINO_VERSION) \
-	-DARDUINO_$(ARDUINO_BOARD) -DESP8266 -DLWIP_OPEN_SRC\
+	-DARDUINO_$(ARDUINO_BOARD) -DESP8266 \
 	-DARDUINO_ARCH_$(shell echo "$(ARDUINO_ARCH)" | tr '[:lower:]' '[:upper:]') \
 	-I$(ESPRESSIF_SDK)/include
 
@@ -90,7 +90,7 @@ LD := $(XTENSA_TOOLCHAIN)xtensa-lx106-elf-gcc
 OBJDUMP := $(XTENSA_TOOLCHAIN)xtensa-lx106-elf-objdump
 
 .PHONY: all arduino dirs clean flash flash_app1 flash_app2
-
+.PRECIOUS: $(BUILD_DIR)/$(TARGET)_0.elf $(BUILD_DIR)/$(TARGET)_1.elf
 all: dirs core libs bin
 
 arduino:
@@ -101,27 +101,6 @@ arduino:
 		--pref build.path=$(BUILD_DIR)/arduino \
 		--pref sketchbook.path=$(realpath ./) \
 		$(TARGET).ino
-
-# use the leftovers of the arduino build for our own linking purposes
-mylink: arduino
-	$(LD) \
-		-nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static \
-		-L$(ESPRESSIF_SDK)/lib \
-		-L./ld -T./ld/app1.ld \
-		-o $(BUILD_DIR)/arduino/$(TARGET)_1.cpp.elf \
-		-Wl,--start-group \
-		$(BUILD_DIR)/arduino/main.cpp.o \
-		$(BUILD_DIR)/arduino/esp-features.cpp.o \
-		$(BUILD_DIR)/arduino/udplog.cpp.o \
-		$(BUILD_DIR)/arduino/ESP8266WiFi/ESP8266WiFiMulti.cpp.o \
-		$(BUILD_DIR)/arduino/ESP8266WiFi/WiFiClient.cpp.o \
-		$(BUILD_DIR)/arduino/ESP8266WiFi/WiFiUdp.cpp.o \
-		$(BUILD_DIR)/arduino/ESP8266WiFi/WiFiServer.cpp.o \
-		$(BUILD_DIR)/arduino/ESP8266WiFi/ESP8266WiFi.cpp.o \
-		$(BUILD_DIR)/arduino/core.a \
-		-lm -lgcc -lhal -lphy -lnet80211 -llwip -lwpa -lmain -lpp -lsmartconfig \
-		-Wl,--end-group \
-		-L$(BUILD_DIR)/arduino
 
 dirs:
 	@mkdir -p $(OUTPUT_DIR)
@@ -174,10 +153,12 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 LDEXTRAFLAGS = -L$(ESPRESSIF_SDK)/lib -L$(BUILD_DIR) -L./ld
 LD_LIBS = -lm -lgcc -lhal -lphy -lnet80211 -llwip -lwpa -lmain -lpp -lssl -lsmartconfig
 
-$(BUILD_DIR)/$(TARGET)_%.elf: core libs
+$(BUILD_DIR)/$(TARGET)_%.elf: $(BUILD_DIR)/core.a $(OBJ_FILES)
 	$(LD) $(LDFLAGS) $(LDEXTRAFLAGS) -Trom$*.ld \
 		-o $@ -Wl,--start-group $(OBJ_FILES) $(BUILD_DIR)/core.a $(LD_LIBS) \
 		-Wl,--end-group
 
 $(OUTPUT_DIR)/rom%.bin: $(BUILD_DIR)/$(TARGET)_%.elf
 	$(ESPTOOL2) -quiet -bin -boot2 $^ $@ .text .data .rodata
+
+-include $(BUILD_DIR)/*.d

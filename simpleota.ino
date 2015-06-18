@@ -1,16 +1,12 @@
-#include "Arduino.h"
-#include "IPAddress.h"
-#include "ESP8266WiFi.h"
+#include <Arduino.h>
+#include <IPAddress.h>
+#include <ESP8266WiFi.h>
 
 extern "C" {
 
-#include "c_types.h"
-#include "eagle_soc.h"
-#include "ets_sys.h"
-#include "os_type.h"
-#include "osapi.h"
-#include "mem.h"
-#include "user_interface.h"
+#include <mem.h>
+#include <user_interface.h>
+
 #include "rboot-ota.h"
 
 }
@@ -21,30 +17,45 @@ extern "C" {
 #define BUTTON_PIN      0
 #endif
 
+
+
+void print_success() {
+    os_printf("  _____ _    _  _____ _____ ______  _____ _____ \r\n");
+    os_printf(" / ____| |  | |/ ____/ ____|  ____|/ ____/ ____|\r\n");
+    os_printf("| (___ | |  | | |   | |    | |__  | (___| (___  \r\n");
+    os_printf(" \\___ \\| |  | | |   | |    |  __|  \\___ \\\\___ \\ \r\n");
+    os_printf(" ____) | |__| | |___| |____| |____ ____) |___) |\r\n");
+    os_printf("|_____/ \\____/ \\_____\\_____|______|_____/_____/ \r\n");
+}
+
+void do_restart(void* arg) {
+    system_restart();
+}
+
 bool start_update = false;
 bool updating = false;
-bool switch_and_reset = false;
+os_timer_t uptimer;
 
 void update_done(void* arg, bool result) {
     updating = false;
-    switch_and_reset = result;
-    return;
 
     rboot_ota* ota = (rboot_ota*)arg;
 
-    return;
-    if (result) {
-        os_printf("update_done: success\r\n");
-        uint8_t rom = rboot_get_current_rom();
-        rboot_set_current_rom(rom == 0 ? 1 : 0);
-        delay(10);
-        ESP.restart();
-    } else {
+    if (!result) {
         os_printf("update_done: fail\r\n");
         os_free(ota->request);
         os_free(ota);
-        updating = false;
+        return;
     }
+
+    os_printf("update_done: success, switching rom... \r\n");
+    uint8_t rom = rboot_get_current_rom();
+    rboot_set_current_rom(rom == 0 ? 1 : 0);
+    print_success();
+    /*system_restart();*/
+    os_timer_disarm(&uptimer);
+    os_timer_setfn(&uptimer, (os_timer_func_t *)do_restart, NULL);
+    os_timer_arm(&uptimer, 250, 0);
 }
 
 #define HTTP_HEADER "Connection: keep-alive\r\n\
@@ -78,7 +89,7 @@ void update() {
     os_sprintf((char*)ota->request,
     	"GET /%s HTTP/1.1\r\nHost: " IPSTR "\r\n" HTTP_HEADER,
     	(slot == 0 ? "rom0.bin" : "rom1.bin"),
-    	IP2STR(ota->ip));
+    	IP2STR((uint32_t)ota->ip));
 
     // start the upgrade process
     if (rboot_ota_start(ota)) {
@@ -113,21 +124,6 @@ void loop() {
     if (start_update && !updating) {
         start_update = false;
         update();
-    }
-    if (switch_and_reset) {
-        switch_and_reset = false;
-        Serial.println("switching rom");
-        uint8_t current_rom = rboot_get_current_rom();
-        Serial.print("Current rom is: ");
-        Serial.println(current_rom);
-
-        rboot_set_current_rom(current_rom == 0 ? 1 : 0);
-
-        current_rom = rboot_get_current_rom();
-        Serial.print("switched to: ");
-        Serial.println(current_rom);
-
-        ESP.restart();
     }
     delay(50);
 }

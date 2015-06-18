@@ -7,6 +7,7 @@ import logging
 import  argparse
 from logging.handlers import TimedRotatingFileHandler, SocketHandler
 import serial
+import hexdump
 
 _logdir = p.realpath(p.join(p.dirname(__file__), 'logs'))
 
@@ -90,11 +91,18 @@ def main():
             line = port.readline()
             if not len(line):
                 continue
-            log.info("%s", line.rstrip("\r\n"))
-            if line.endswith('\n'):
-                she.info("said %s", line.rstrip("\r\n"))
-            else:
-                she.info("zzzz %s", line.rstrip("\r\n"))
+            try:
+                line = line.decode('ascii')
+                log.info(line.rstrip("\r\n"))
+            except UnicodeDecodeError as e:
+                for hl in hexdump.dumpgen(line):
+                    log.info(hl)
+
+
+            #if line.endswith('\n'):
+            #    she.info("said %s", line.rstrip("\r\n"))
+            #else:
+            #    she.info("zzzz %s", line.rstrip("\r\n"))
 
             [h.flush() for h in she.handlers]
 

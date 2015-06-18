@@ -6,11 +6,7 @@
 // OTA code based on SDK sample from Espressif.
 //////////////////////////////////////////////////
 
-//#include <c_types.h>
-//#include <user_interface.h>
-//#include <espconn.h>
-//#include <mem.h>
-//#include <osapi.h>
+#include "Arduino.h"
 
 #include <stddef.h>
 #include <c_types.h>
@@ -23,6 +19,9 @@
 #include <osapi.h>
 
 #include "rboot-ota.h"
+
+// #define RBOOT_DEBUG(...)
+#define RBOOT_DEBUG(...)		os_printf(__VA_ARGS__)
 
 // structure to hold our internal update state
 typedef struct {
@@ -42,9 +41,12 @@ static upgrade_param *upgrade;
 static os_timer_t ota_timer;
 
 // get the rboot config
-rboot_config ICACHE_FLASH_ATTR rboot_get_config() {
+rboot_config ICACHE_RAM_ATTR rboot_get_config() {
 	rboot_config conf;
+	WDT_FEED();
+	noInterrupts();
 	spi_flash_read(BOOT_CONFIG_SECTOR * SECTOR_SIZE, (uint32*)&conf, sizeof(rboot_config));
+	interrupts();
 	return conf;
 }
 
@@ -61,7 +63,7 @@ bool ICACHE_FLASH_ATTR rboot_set_config(rboot_config *conf) {
 
 	buffer = (uint8*)os_malloc(SECTOR_SIZE);
 	if (!buffer) {
-		os_printf("No ram!\r\n");
+		RBOOT_DEBUG("No ram!\r\n");
 		return false;
 	}
 
@@ -73,10 +75,20 @@ bool ICACHE_FLASH_ATTR rboot_set_config(rboot_config *conf) {
 	conf->chksum = chksum;
 #endif
 
+	WDT_FEED();
+	noInterrupts();
 	spi_flash_read(BOOT_CONFIG_SECTOR * SECTOR_SIZE, (uint32*)buffer, SECTOR_SIZE);
-	memcpy(buffer, conf, sizeof(rboot_config));
+	interrupts();
+
+	os_memcpy(buffer, conf, sizeof(rboot_config));
+
+	noInterrupts();
 	spi_flash_erase_sector(BOOT_CONFIG_SECTOR);
+	interrupts();
+
+	noInterrupts();
 	spi_flash_write(BOOT_CONFIG_SECTOR * SECTOR_SIZE, (uint32*)buffer, SECTOR_SIZE);
+	interrupts();
 
 	os_free(buffer);
 	return true;
@@ -99,8 +111,7 @@ bool ICACHE_FLASH_ATTR rboot_set_current_rom(uint8 rom) {
 }
 
 // function to do the actual writing to flash
-static bool ICACHE_FLASH_ATTR write_flash(uint8 *data, uint16 len) {
-
+static bool ICACHE_RAM_ATTR write_flash(uint8 *data, uint16 len) {
 	bool ret = false;
 	uint8 *buffer;
 
@@ -135,12 +146,19 @@ static bool ICACHE_FLASH_ATTR write_flash(uint8 *data, uint16 len) {
 			// this is fine as long as data len < sector size
 			if (upgrade->last_sector_erased != (upgrade->start_addr + len) / SECTOR_SIZE) {
 				upgrade->last_sector_erased = (upgrade->start_addr + len) / SECTOR_SIZE;
+				WDT_FEED();
+				noInterrupts();
 				spi_flash_erase_sector(upgrade->last_sector_erased);
+				interrupts();
 			}
 		}
 
 		// write current chunk
-		if (spi_flash_write(upgrade->start_addr, (uint32 *)buffer, len) == SPI_FLASH_RESULT_OK) {
+		WDT_FEED();
+		noInterrupts();
+		SpiFlashOpResult fres = spi_flash_write(upgrade->start_addr, (uint32 *)buffer, len);
+		interrupts();
+		if (fres == SPI_FLASH_RESULT_OK) {
 			ret = true;
 			upgrade->start_addr += len;
 		}
@@ -157,7 +175,6 @@ static bool ICACHE_FLASH_ATTR rboot_ota_init(rboot_ota *ota) {
 
 	upgrade = (upgrade_param*)os_zalloc(sizeof(upgrade_param));
 	if (!upgrade) {
-		os_printf("No ram!\r\n");
 		return false;
 	}
 
@@ -168,14 +185,14 @@ static bool ICACHE_FLASH_ATTR rboot_ota_init(rboot_ota *ota) {
 	bootconf = rboot_get_config();
 	if (ota->rom_slot == FLASH_BY_ADDR) {
 		if (ota->rom_addr % SECTOR_SIZE) {
-			os_printf("Bad rom addr.\r\n");
+			RBOOT_DEBUG("Bad rom addr.\r\n");
 			os_free(upgrade);
 			return false;
 		}
 		upgrade->start_addr = ota->rom_addr;
 	} else {
 		if ((ota->rom_slot > bootconf.count) || (bootconf.roms[ota->rom_slot] % SECTOR_SIZE)) {
-			os_printf("Bad rom slot.\r\n");
+			RBOOT_DEBUG("Bad rom slot.\r\n");
 			os_free(upgrade);
 			return false;
 		}
@@ -187,7 +204,7 @@ static bool ICACHE_FLASH_ATTR rboot_ota_init(rboot_ota *ota) {
 	// create connection
 	upgrade->conn = (struct espconn *)os_zalloc(sizeof(struct espconn));
 	if (!upgrade->conn) {
-		os_printf("No ram!\r\n");
+		RBOOT_DEBUG("No ram!\r\n");
 		os_free(upgrade);
 		return false;
 	}
@@ -195,7 +212,7 @@ static bool ICACHE_FLASH_ATTR rboot_ota_init(rboot_ota *ota) {
 	if (!upgrade->conn->proto.tcp) {
 		os_free(upgrade->conn);
 		upgrade->conn = 0;
-		os_printf("No ram!\r\n");
+		RBOOT_DEBUG("No ram!\r\n");
 		os_free(upgrade);
 		return false;
 	}
@@ -336,7 +353,7 @@ static void ICACHE_FLASH_ATTR upgrade_connect_cb(void *arg) {
 
 // connection attempt timed out
 static void ICACHE_FLASH_ATTR connect_timeout_cb() {
-	os_printf("Connect timeout.\r\n");
+	RBOOT_DEBUG("Connect timeout.\r\n");
 	// not connected so don't call disconnect on the connection
 	// but call our own disconnect callback to do the cleanup
 	upgrade_disconcb(upgrade->conn);
@@ -344,7 +361,7 @@ static void ICACHE_FLASH_ATTR connect_timeout_cb() {
 
 // call back for lost connection
 static void ICACHE_FLASH_ATTR upgrade_recon_cb(void *arg, sint8 errType) {
-	os_printf("Connection error.\r\n");
+	RBOOT_DEBUG("Connection error.\r\n");
 	// not connected so don't call disconnect on the connection
 	// but call our own disconnect callback to do the cleanup
 	upgrade_disconcb(upgrade->conn);
@@ -360,7 +377,7 @@ bool ICACHE_FLASH_ATTR rboot_ota_start(rboot_ota *ota) {
 
 	// check parameters
 	if (!ota || !ota->request) {
-		os_printf("Invalid parameters.\r\n");
+		RBOOT_DEBUG("Invalid parameters.\r\n");
 		return false;
 	}
 
