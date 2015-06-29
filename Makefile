@@ -1,20 +1,20 @@
 TARGET = $(notdir $(realpath .))
 -include local.mk
 
-SERIAL_PORT ?= /dev/tty.usbmodem-
-SERIAL_BAUD ?= 74880
-ESPTOOL_BAUD ?= 921600
+SERIAL_PORT ?= /dev/tty.nodemcu
+SERIAL_BAUD ?= 230400
+ESPTOOL_BAUD ?= 230400
 ESPTOOL_RESET ?= ck
 
 FLASH_FREQ ?= 40
-FLASH_MODE ?= qio
+FLASH_MODE ?= dio
 FLASH_SIZE ?= 4096
 
 F_CPU ?= 80000000L
 
 # arduino installation and 3rd party hardware folder stuff
-ARDUINO_HOME ?= /Users/ficeto/Desktop/ESP8266/Arduino-mine/build/macosx/work/Arduino.app/Contents/Java
-ARDUINO_BIN ?= $(ARDUINO_HOME)/../../MacOS/Arduino
+ARDUINO_HOME ?= /home/user/Arduino/build/linux/work
+ARDUINO_BIN ?= $(ARDUINO_HOME)/arduino
 ARDUINO_VENDOR = esp8266com
 ARDUINO_ARCH = esp8266
 ARDUINO_BOARD ?= ESP8266_ESP12
@@ -32,8 +32,7 @@ XTENSA_TOOLCHAIN = $(ARDUINO_CORE)/tools/xtensa-lx106-elf/bin/
 # XTENSA_TOOLCHAIN ?=
 ESPRESSIF_SDK = $(ARDUINO_CORE)/tools/sdk
 ESPTOOL = $(ARDUINO_CORE)/tools/esptool
-ESPTOOL2 ?= /Users/ficeto/bin/esptool2
-ESPTOOL_PY ?= /Users/ficeto/Desktop/ESP8266/espdev/bin/esptool.py
+ESPTOOL2 ?= $(shell which esptool2)
 BUILD_DIR = ./build
 OUTPUT_DIR = ./firmware
 RBOOTFW_DIR ?= $(OUTPUT_DIR)
