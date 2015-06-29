@@ -2,8 +2,8 @@ TARGET = $(notdir $(realpath .))
 -include local.mk
 
 SERIAL_PORT ?= /dev/tty.nodemcu
-SERIAL_BAUD ?= 230400
-ESPTOOL_BAUD ?= 230400
+SERIAL_BAUD ?= 74880
+ESPTOOL_BAUD ?= 921600
 ESPTOOL_RESET ?= ck
 
 FLASH_FREQ ?= 40
