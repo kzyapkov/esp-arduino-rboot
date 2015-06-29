@@ -1,13 +1,18 @@
 TARGET = $(notdir $(realpath .))
 -include local.mk
 
-SERIAL_PORT ?= /dev/tty.nodemcu
-SERIAL_BAUD ?= 230400
-ESPTOOL_BAUD ?= 230400
+SERIAL_PORT ?= /dev/tty.usbmodem-
+SERIAL_BAUD ?= 74880
+ESPTOOL_BAUD ?= 921600
+ESPTOOL_RESET ?= ck
+
+FLASH_FREQ ?= 40
+FLASH_MODE ?= dio
+FLASH_SIZE ?= 4096
 
 # arduino installation and 3rd party hardware folder stuff
-ARDUINO_HOME ?= $(wildcard ~/src/esp/Arduino/build/linux/work)
-ARDUINO_BIN ?= $(ARDUINO_HOME)/arduino
+ARDUINO_HOME ?= /Users/ficeto/Desktop/ESP8266/Arduino-mine/build/macosx/work/Arduino.app/Contents/Java
+ARDUINO_BIN ?= $(ARDUINO_HOME)/../../MacOS/Arduino
 ARDUINO_VENDOR = esp8266com
 ARDUINO_ARCH = esp8266
 ARDUINO_BOARD ?= ESP8266_ESP12
@@ -26,8 +31,8 @@ XTENSA_TOOLCHAIN = $(ARDUINO_CORE)/tools/xtensa-lx106-elf/bin/
 # XTENSA_TOOLCHAIN ?=
 ESPRESSIF_SDK = $(ARDUINO_CORE)/tools/sdk
 ESPTOOL = $(ARDUINO_CORE)/tools/esptool
-ESPTOOL2 ?= $(shell which esptool2)
-ESPTOOL_PY ?= $(shell which esptool.py)
+ESPTOOL2 ?= /Users/ficeto/bin/esptool2
+ESPTOOL_PY ?= /Users/ficeto/Desktop/ESP8266/espdev/bin/esptool.py
 BUILD_DIR = ./build
 OUTPUT_DIR = ./firmware
 RBOOTFW_DIR ?= $(OUTPUT_DIR)
@@ -79,13 +84,12 @@ INCLUDES = $(CORE_INC:%=-I%) $(ALIBDIRS:%=-I%) $(ULIBDIRS:%=-I%)
 VPATH = . $(CORE_INC) $(ALIBDIRS) $(ULIBDIRS)
 
 ASFLAGS = -c -g -x assembler-with-cpp -MMD $(DEFINES)
-CFLAGS = -c -Os -g -Wpointer-arith -Wno-implicit-function-declaration -Wl,-EL \
-	-fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals \
-	-falign-functions=4 -MMD -std=gnu99 -Wfatal-errors
-CXXFLAGS = -c -Os -mlongcalls -mtext-section-literals -fno-exceptions \
-	-fno-rtti -falign-functions=4 -std=c++11 -MMD -Wfatal-errors
-LDFLAGS = -g -Os -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static \
-	-Wl,-wrap,system_restart_local -Wl,-wrap,register_chipv6_phy
+CFLAGS = -c -Os -g -Wpointer-arith -Wno-implicit-function-declaration -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals -falign-functions=4 -MMD -std=gnu99 -Wfatal-errors
+CXXFLAGS = -c -Os -mlongcalls -mtext-section-literals -fno-exceptions -fno-rtti -falign-functions=4 -std=c++11 -MMD -Wfatal-errors
+LDFLAGS = -g -Os -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,-wrap,system_restart_local -Wl,-wrap,register_chipv6_phy
+
+RBOOTCFLAGS = -Os -O3 -Wpointer-arith -Wundef -Werror -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH
+RBOOTLDFLAGS = -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static
 
 CC := $(XTENSA_TOOLCHAIN)xtensa-lx106-elf-gcc
 CXX := $(XTENSA_TOOLCHAIN)xtensa-lx106-elf-g++
@@ -112,35 +116,18 @@ dirs:
 	@mkdir -p $(BUILD_DIR)/arduino
 
 clean:
-	rm -rf $(BUILD_DIR)/* || true
-	rm $(OUTPUT_DIR)/rom0.bin $(OUTPUT_DIR)/rom1.bin || true
+	@rm -rf $(BUILD_DIR)/* || true
+	@rm -rf $(OUTPUT_DIR)/* || true
+	@rm -rf rboot/rboot-hex2a.h || true
 
 core: dirs build/core.a
 
 libs: dirs $(OBJ_FILES)
 
-bin: $(OUTPUT_DIR)/rom0.bin $(OUTPUT_DIR)/rom1.bin
+bin: $(OUTPUT_DIR)/rboot.bin $(OUTPUT_DIR)/rom0.bin $(OUTPUT_DIR)/rom1.bin
 
-ESPTOOL_PY_FLAGS = --port $(SERIAL_PORT) --baud $(ESPTOOL_BAUD)
-ESPTOOL_PY_OLIMEX = -fs 16m -ff 40m -fm qio
-ESPTOOL_PY_ESP12 = -fs 32m -ff 40m -fm qio
-ESPTOOL_PY_ESP12E = -fs 32m -ff 40m -fm dio
-
-ESPTOOL_PY_FLASHOPTS ?= $(ESPTOOL_PY_ESP12)
-
-flash: $(OUTPUT_DIR)/rom0.bin $(OUTPUT_DIR)/rom1.bin
-	$(ESPTOOL_PY) $(ESPTOOL_PY_FLAGS) write_flash \
-		$(ESPTOOL_PY_FLASHOPTS) \
-		0x02000 $(OUTPUT_DIR)/rom0.bin \
-		0x82000 $(OUTPUT_DIR)/rom1.bin
-
-flash_rboot:
-	$(ESPTOOL_PY) $(ESPTOOL_PY_FLAGS) write_flash\
-		$(ESPTOOL_PY_FLASHOPTS) \
-		0x00000 $(RBOOTFW_DIR)/rboot.bin
-
-monitor:
-	./monitor.py --port $(SERIAL_PORT) --baud $(SERIAL_BAUD)
+flash: all
+	$(ESPTOOL) -vv -cd $(ESPTOOL_RESET) -cp $(SERIAL_PORT) -cb $(ESPTOOL_BAUD) -ca 0x00000 -cf $(RBOOTFW_DIR)/rboot.bin -ca 0x02000 -cf $(RBOOTFW_DIR)/rom0.bin -ca 0x82000 -cf $(RBOOTFW_DIR)/rom1.bin
 
 $(BUILD_DIR)/%.o: $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/%.c
 	$(CC) $(DEFINES) $(CORE_INC:%=-I%) $(CFLAGS) -o $@ $<
@@ -153,7 +140,7 @@ $(BUILD_DIR)/%.o: $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/%.cpp
 	$(CXX) $(DEFINES) $(CORE_INC:%=-I%) $(CXXFLAGS) -o $@ $<
 
 $(BUILD_DIR)/%.S.o: $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/%.S
-	$(CC) $(ASFLAGS) -o $@ $<
+	$(CC) $(ASFLAGS) $(CORE_INC:%=-I%) -o $@ $<
 
 $(BUILD_DIR)/core.a: $(CORE_OBJS)
 	$(AR) cru $@ $(CORE_OBJS)
@@ -173,6 +160,14 @@ $(BUILD_DIR)/$(TARGET)_%.elf: $(BUILD_DIR)/core.a $(OBJ_FILES)
 		-Wl,--end-group
 
 $(OUTPUT_DIR)/rom%.bin: $(BUILD_DIR)/$(TARGET)_%.elf
-	$(ESPTOOL2) -quiet -bin -boot2 $^ $@ .text .data .rodata
+	$(ESPTOOL2) -quiet -bin -boot2 -$(FLASH_SIZE) -$(FLASH_FREQ) -$(FLASH_MODE) $^ $@ .text .data .rodata
+
+$(OUTPUT_DIR)/rboot.bin:
+	$(CC) $(RBOOTCFLAGS) -c rboot/rboot-stage2a.c -o $(BUILD_DIR)/rboot-stage2a.o
+	$(LD) -Trboot-stage2a.ld $(RBOOTLDFLAGS) -Wl,--start-group $(BUILD_DIR)/rboot-stage2a.o -Wl,--end-group -o $(BUILD_DIR)/rboot-stage2a.elf
+	$(ESPTOOL2) -quiet -header $(BUILD_DIR)/rboot-stage2a.elf rboot/rboot-hex2a.h .text
+	$(CC) $(RBOOTCFLAGS) -c rboot/rboot.c -o $(BUILD_DIR)/rboot.o
+	$(LD) -Teagle.app.v6.rboot.ld $(RBOOTLDFLAGS) -Wl,--start-group $(BUILD_DIR)/rboot.o -Wl,--end-group -o $(BUILD_DIR)/rboot.elf
+	$(ESPTOOL2) -quiet -bin -boot0 -$(FLASH_SIZE) -$(FLASH_FREQ) -$(FLASH_MODE) $(BUILD_DIR)/rboot.elf $(OUTPUT_DIR)/rboot.bin .text .rodata
 
 -include $(BUILD_DIR)/*.d

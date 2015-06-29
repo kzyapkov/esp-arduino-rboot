@@ -2,3 +2,7 @@ config.h
 firmware/rom?.bin
 build/
 local.mk
+
+firmware/rboot.bin
+
+firmware/rboot.bin

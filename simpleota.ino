@@ -25,7 +25,7 @@ void on_button() {
 }
 
 void setup() {
-    Serial.begin(230400);
+    Serial.begin(DEBUG_BAUD);
     Serial.setDebugOutput(true);
     OTA_setUpdateServer(IPAddress(UPDATE_HOST), UPDATE_PORT);
     WiFi.begin(SSID, PASS);
