@@ -149,11 +149,12 @@ $(OUTPUT_DIR)/rom%.bin: $(BUILD_DIR)/$(TARGET)_%.elf
 	$(ESPTOOL2) -quiet -bin -boot2 -$(FLASH_SIZE) -$(FLASH_FREQ) -$(FLASH_MODE) $^ $@ .text .data .rodata
 
 $(OUTPUT_DIR)/rboot.bin:
+	# make -C rboot all
 	$(CC) $(RBOOTCFLAGS) -c rboot/rboot-stage2a.c -o $(BUILD_DIR)/rboot-stage2a.o
-	$(LD) -Trboot-stage2a.ld $(RBOOTLDFLAGS) -Wl,--start-group $(BUILD_DIR)/rboot-stage2a.o -Wl,--end-group -o $(BUILD_DIR)/rboot-stage2a.elf
+	$(LD) -Lrboot -Trboot-stage2a.ld $(RBOOTLDFLAGS) -Wl,--start-group $(BUILD_DIR)/rboot-stage2a.o -Wl,--end-group -o $(BUILD_DIR)/rboot-stage2a.elf
 	$(ESPTOOL2) -quiet -header $(BUILD_DIR)/rboot-stage2a.elf rboot/rboot-hex2a.h .text
 	$(CC) $(RBOOTCFLAGS) -c rboot/rboot.c -o $(BUILD_DIR)/rboot.o
-	$(LD) -Teagle.app.v6.rboot.ld $(RBOOTLDFLAGS) -Wl,--start-group $(BUILD_DIR)/rboot.o -Wl,--end-group -o $(BUILD_DIR)/rboot.elf
+	$(LD) -Lrboot -Teagle.app.v6.ld $(RBOOTLDFLAGS) -Wl,--start-group $(BUILD_DIR)/rboot.o -Wl,--end-group -o $(BUILD_DIR)/rboot.elf
 	$(ESPTOOL2) -quiet -bin -boot0 -$(FLASH_SIZE) -$(FLASH_FREQ) -$(FLASH_MODE) $(BUILD_DIR)/rboot.elf $(OUTPUT_DIR)/rboot.bin .text .rodata
 
 -include $(BUILD_DIR)/*.d
