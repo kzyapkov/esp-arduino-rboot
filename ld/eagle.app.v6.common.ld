@@ -1,7 +1,6 @@
 /* This linker script generated from xt-genldscripts.tpp for LSP . */
 /* Linker Script for ld -N */
 
-
 PHDRS
 {
   dport0_0_phdr PT_LOAD;

@@ -1,0 +1,5 @@
+
+# see the top of Makefile for stuff which can be overriden here
+
+SERIAL_PORT = /dev/ttyUSB0
+SERIAL_BAUD = 230400
