@@ -13,10 +13,10 @@
 //#define BOOT_NO_ASM
 
 // uncomment to have a checksum on the boot config
-//#define BOOT_CONFIG_CHKSUM
+#define BOOT_CONFIG_CHKSUM
 
 // uncomment to enable big flash support (>1MB)
-//#define BOOT_BIG_FLASH
+#define BOOT_BIG_FLASH
 
 // increase if required
 #define MAX_ROMS 4

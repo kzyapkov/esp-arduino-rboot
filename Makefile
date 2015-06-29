@@ -7,8 +7,10 @@ ESPTOOL_BAUD ?= 921600
 ESPTOOL_RESET ?= ck
 
 FLASH_FREQ ?= 40
-FLASH_MODE ?= dio
+FLASH_MODE ?= qio
 FLASH_SIZE ?= 4096
+
+F_CPU ?= 80000000L
 
 # arduino installation and 3rd party hardware folder stuff
 ARDUINO_HOME ?= /Users/ficeto/Desktop/ESP8266/Arduino-mine/build/macosx/work/Arduino.app/Contents/Java
@@ -19,7 +21,6 @@ ARDUINO_BOARD ?= ESP8266_ESP12
 ARDUINO_VARIANT ?= nodemcu
 ARDUINO_CORE ?= $(ARDUINO_HOME)/hardware/$(ARDUINO_VENDOR)/$(ARDUINO_ARCH)
 ARDUINO_VERSION ?= 10605
-F_CPU=80000000L
 
 # sketch-specific
 USER_LIBDIR = ./lib
@@ -38,12 +39,9 @@ OUTPUT_DIR = ./firmware
 RBOOTFW_DIR ?= $(OUTPUT_DIR)
 
 CORE_SSRC = $(wildcard $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/*.S)
-CORE_SRC = $(wildcard $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/*.c)
-# spiffs files are in a subdirectory, don't know much about makefiles
-CORE_SRC += $(wildcard $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/*/*.c)
+CORE_SRC = $(wildcard $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/*.c) $(wildcard $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/*/*.c)
 CORE_CXXSRC = $(wildcard $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/*.cpp)
-CORE_OBJS = $(addprefix $(BUILD_DIR)/, \
-	$(notdir $(CORE_SSRC:.S=.S.o) $(CORE_SRC:.c=.c.o) $(CORE_CXXSRC:.cpp=.cpp.o)))
+CORE_OBJS = $(addprefix $(BUILD_DIR)/, $(notdir $(CORE_SSRC:.S=.S.o) $(CORE_SRC:.c=.c.o) $(CORE_CXXSRC:.cpp=.cpp.o)))
 
 # arduino libraries
 ALIBDIRS = $(sort $(dir $(wildcard \
@@ -53,17 +51,11 @@ ALIBDIRS = $(sort $(dir $(wildcard \
 	$(ARDUINO_LIBS:%=$(ARDUINO_HOME)/hardware/$(ARDUINO_VENDOR)/$(ARDUINO_ARCH)/libraries/%/src/*.cpp))))
 
 # user libraries and sketch code
-ULIBDIRS = . $(EXTRA_SRC) $(sort $(dir $(wildcard \
-	$(USER_LIBS:%=$(USER_LIBDIR)/%/*.c) \
-	$(USER_LIBS:%=$(USER_LIBDIR)/%/*.cpp) \
-	$(USER_LIBS:%=$(USER_LIBDIR)/%/src/*.c) \
-	$(USER_LIBS:%=$(USER_LIBDIR)/%/src/*.cpp))))
+ULIBDIRS = . $(EXTRA_SRC) $(sort $(dir $(wildcard $(USER_LIBS:%=$(USER_LIBDIR)/%/*.c) $(USER_LIBS:%=$(USER_LIBDIR)/%/*.cpp) $(USER_LIBS:%=$(USER_LIBDIR)/%/src/*.c) $(USER_LIBS:%=$(USER_LIBDIR)/%/src/*.cpp))))
 
 # all sources
-LIB_SRC = $(wildcard $(addsuffix /*.c,$(ULIBDIRS))) \
-	$(wildcard $(addsuffix /*.c,$(ALIBDIRS)))
-LIB_CXXSRC = $(wildcard $(addsuffix /*.cpp,$(ULIBDIRS))) \
-	$(wildcard $(addsuffix /*.cpp,$(ALIBDIRS)))
+LIB_SRC = $(wildcard $(addsuffix /*.c,$(ULIBDIRS))) $(wildcard $(addsuffix /*.c,$(ALIBDIRS)))
+LIB_CXXSRC = $(wildcard $(addsuffix /*.cpp,$(ULIBDIRS))) $(wildcard $(addsuffix /*.cpp,$(ALIBDIRS)))
 
 # object files
 OBJ_FILES = $(addprefix $(BUILD_DIR)/,$(notdir $(LIB_SRC:.c=.c.o) $(LIB_CXXSRC:.cpp=.cpp.o)))
@@ -75,10 +67,7 @@ DEFINES = -D__ets__ -DICACHE_FLASH -U__STRICT_ANSI__ \
 	-DDEBUG_BAUD=$(SERIAL_BAUD) \
 	-I$(ESPRESSIF_SDK)/include
 
-CORE_INC = $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH) \
-	$(ARDUINO_CORE)/variants/$(ARDUINO_VARIANT) \
-# can't figure this out
-CORE_INC += $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/spiffs
+CORE_INC = $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH) $(ARDUINO_CORE)/variants/$(ARDUINO_VARIANT) $(ARDUINO_CORE)/cores/$(ARDUINO_ARCH)/spiffs
 
 INCLUDES = $(CORE_INC:%=-I%) $(ALIBDIRS:%=-I%) $(ULIBDIRS:%=-I%)
 VPATH = . $(CORE_INC) $(ALIBDIRS) $(ULIBDIRS)
@@ -97,7 +86,7 @@ AR := $(XTENSA_TOOLCHAIN)xtensa-lx106-elf-ar
 LD := $(XTENSA_TOOLCHAIN)xtensa-lx106-elf-gcc
 OBJDUMP := $(XTENSA_TOOLCHAIN)xtensa-lx106-elf-objdump
 
-.PHONY: all arduino dirs clean flash monitor
+.PHONY: all arduino dirs clean flash
 
 all: dirs core libs bin
 
@@ -155,9 +144,7 @@ LDEXTRAFLAGS = -L$(ESPRESSIF_SDK)/lib -L$(BUILD_DIR) -L./ld
 LD_LIBS = -lm -lgcc -lhal -lphy -lnet80211 -llwip -lwpa -lmain -lpp -lsmartconfig
 
 $(BUILD_DIR)/$(TARGET)_%.elf: $(BUILD_DIR)/core.a $(OBJ_FILES)
-	$(LD) $(LDFLAGS) $(LDEXTRAFLAGS) -Trom$*.ld \
-		-o $@ -Wl,--start-group $(OBJ_FILES) $(BUILD_DIR)/core.a $(LD_LIBS) \
-		-Wl,--end-group
+	$(LD) $(LDFLAGS) $(LDEXTRAFLAGS) -Trom$*.ld -o $@ -Wl,--start-group $(OBJ_FILES) $(BUILD_DIR)/core.a $(LD_LIBS) -Wl,--end-group
 
 $(OUTPUT_DIR)/rom%.bin: $(BUILD_DIR)/$(TARGET)_%.elf
 	$(ESPTOOL2) -quiet -bin -boot2 -$(FLASH_SIZE) -$(FLASH_FREQ) -$(FLASH_MODE) $^ $@ .text .data .rodata

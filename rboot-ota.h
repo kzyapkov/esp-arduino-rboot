@@ -9,7 +9,7 @@
 // OTA code based on SDK sample from Espressif.
 //////////////////////////////////////////////////
 
-#include "rboot.h"
+#include "rboot/rboot.h"
 
 #define UPGRADE_FLAG_IDLE		0x00
 #define UPGRADE_FLAG_START		0x01

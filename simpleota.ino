@@ -5,7 +5,7 @@
 #include "config.h"
 
 #ifndef BUTTON_PIN
-#define BUTTON_PIN      0
+#define BUTTON_PIN      5
 #endif
 
 
@@ -30,7 +30,7 @@ void setup() {
     OTA_setUpdateServer(IPAddress(UPDATE_HOST), UPDATE_PORT);
     WiFi.begin(SSID, PASS);
     delay(5);
-    Serial.println("\r\n\r\nArduino with rboot sample");
+    Serial.println("\r\n\r\nArduino with rboot new sample");
     Serial.print("running rom ");
     Serial.println(rboot_get_current_rom());
     while(WiFi.status() != WL_CONNECTED) delay(250);
