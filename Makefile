@@ -144,6 +144,7 @@ LD_LIBS = -lm -lgcc -lhal -lphy -lnet80211 -llwip -lwpa -lmain -lpp -lsmartconfi
 
 $(BUILD_DIR)/$(TARGET)_%.elf: $(BUILD_DIR)/core.a $(OBJ_FILES)
 	$(LD) $(LDFLAGS) $(LDEXTRAFLAGS) -Trom$*.ld -o $@ -Wl,--start-group $(OBJ_FILES) $(BUILD_DIR)/core.a $(LD_LIBS) -Wl,--end-group
+	$(OBJDUMP) -S $@ > $@.txt
 
 $(OUTPUT_DIR)/rom%.bin: $(BUILD_DIR)/$(TARGET)_%.elf
 	$(ESPTOOL2) -quiet -bin -boot2 -$(FLASH_SIZE) -$(FLASH_FREQ) -$(FLASH_MODE) $^ $@ .text .data .rodata

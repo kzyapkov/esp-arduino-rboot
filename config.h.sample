@@ -12,3 +12,4 @@
 //  python2 -m SimpleHTTPServer
 #define UPDATE_HOST     {192, 168, 42, 42}
 #define UPDATE_PORT     8000
+#define UPDATE_URL      "/rom" //"[slot].bin" will be put after

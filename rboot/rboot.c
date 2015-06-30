@@ -259,7 +259,6 @@ uint32 NOINLINE find_image() {
 		romToBoot = romconf->current_rom;
 	}
 
-  ets_printf("ROM0: 0x%08X, ROM1: 0x%08X\r\n", romconf->roms[0], romconf->roms[1]);
 	// try to find a good rom
 	do {
 		runAddr = check_image(romconf->roms[romToBoot]);
