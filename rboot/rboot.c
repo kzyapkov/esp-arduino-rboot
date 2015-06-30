@@ -229,7 +229,11 @@ uint32 NOINLINE find_image() {
 		// create a default config for a standard 2 rom setup
 		ets_printf("Writing default boot config.\r\n");
 		ets_memset(romconf, 0x00, sizeof(rboot_config));
-    if(flashsize > 0x100000) flashsize = 0x100000;
+#ifndef BOOT_BIG_FLASH
+		if (flashsize > 0x100000) flashsize = 0x100000;
+#else
+		if (flashsize > 0x200000) flashsize = 0x200000;
+#endif
 		romconf->magic = BOOT_CONFIG_MAGIC;
 		romconf->version = BOOT_CONFIG_VERSION;
 		romconf->count = 2;
@@ -259,6 +263,7 @@ uint32 NOINLINE find_image() {
 		romToBoot = romconf->current_rom;
 	}
 
+	ets_printf("ROM0: 0x%08X, ROM1: 0x%08X\r\n", romconf->roms[0], romconf->roms[1]);
 	// try to find a good rom
 	do {
 		runAddr = check_image(romconf->roms[romToBoot]);
