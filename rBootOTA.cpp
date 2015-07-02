@@ -26,7 +26,7 @@ extern "C" {
   // API for OTA and rBoot config, for ESP8266.
   // Copyright 2015 Richard A Burton
   // richardaburton@gmail.com
-  // See license.txt for license terms.
+  // See rboot/license.txt for license terms.
   // OTA code based on SDK sample from Espressif.
   //////////////////////////////////////////////////
 

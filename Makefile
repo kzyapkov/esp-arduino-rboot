@@ -28,8 +28,7 @@ USER_LIBDIR = ./lib
 ARDUINO_LIBS = ESP8266WiFi
 EXTRA_SRC =
 
-XTENSA_TOOLCHAIN = $(ARDUINO_CORE)/tools/xtensa-lx106-elf/bin/
-# XTENSA_TOOLCHAIN ?=
+XTENSA_TOOLCHAIN ?= $(ARDUINO_CORE)/tools/xtensa-lx106-elf/bin/
 ESPRESSIF_SDK = $(ARDUINO_CORE)/tools/sdk
 ESPTOOL = $(ARDUINO_CORE)/tools/esptool
 ESPTOOL2 ?= $(shell which esptool2)

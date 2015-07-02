@@ -8,18 +8,6 @@ extern "C" {
 #include "ip_addr.h"
 }
 
-/*
-//This is bad!
-void print_success() {
-    os_printf("  _____ _    _  _____ _____ ______  _____ _____ \r\n");
-    os_printf(" / ____| |  | |/ ____/ ____|  ____|/ ____/ ____|\r\n");
-    os_printf("| (___ | |  | | |   | |    | |__  | (___| (___  \r\n");
-    os_printf(" \\___ \\| |  | | |   | |    |  __|  \\___ \\\\___ \\ \r\n");
-    os_printf(" ____) | |__| | |___| |____| |____ ____) |___) |\r\n");
-    os_printf("|_____/ \\____/ \\_____\\_____|______|_____/_____/ \r\n");
-}
-*/
-
 #ifndef BUTTON_PIN
 #define BUTTON_PIN      5
 #endif
