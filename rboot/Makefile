@@ -16,6 +16,8 @@ LD_SCRIPT = eagle.app.v6.ld
 BUILD_DIR = build
 FIRMW_DIR = firmware
 
+CFLAGS += -I$(BUILD_DIR)
+
 .SECONDARY:
 
 all: $(BUILD_DIR) $(FIRMW_DIR) $(FIRMW_DIR)/rboot.bin
